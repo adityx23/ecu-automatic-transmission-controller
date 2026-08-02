@@ -1,39 +1,54 @@
 # Embedded ECU-Style Automatic Transmission Controller
 
-An embedded drivetrain test platform that measures motor and output speed, monitors current, and automatically commands a three-speed transmission through an encoder-tracked shift actuator. The project combines concurrent firmware on a Parallax Propeller Activity Board with Python-based motor performance and efficiency analysis.
+An embedded drivetrain test platform that measures motor and output speed, monitors electrical behavior, and commands a three-speed transmission through an encoder-tracked shift actuator. The project combines a custom 3D-printed transmission, concurrent firmware on a Parallax Propeller Activity Board, approximately 33 Hz SD-card telemetry, and Python-based performance analysis.
 
-![Motor performance and efficiency comparison](media/efficiency-comparison-light-load.png)
+![Annotated top view of the three-speed drivetrain test platform](media/drivetrain-hardware.png)
+
+**Team 8:** Aditya Patil, Dhruv Karnik, and Mudit Adityaja
 
 ## What the system does
 
-- Samples two analog RPM signals and a motor-current channel through an external ADC.
-- Calculates motor and output RPM from thresholded sensor pulses.
+- Drives a 24 V, 250 W brushed DC motor through a fixed 45:1 primary reduction and selectable 0.6, 1.0, and 1.2 secondary stages.
+- Measures motor and output speed with two AS5600 magnetic encoders.
+- Measures motor current with an ACS712 and motor voltage through a filtered divider and ADS1115 ADC.
 - Applies automatic three-gear shift logic with separate upshift and downshift thresholds.
 - Moves the transmission selector using a bidirectional DC motor and encoder tick feedback.
 - Sweeps a digital potentiometer to exercise the drivetrain across operating points.
 - Displays motor RPM, output RPM, and selected gear as live TV-output telemetry.
-- Analyzes logged voltage, current, speed, load, and efficiency data in Jupyter notebooks.
+- Logs synchronized drivetrain telemetry to an SD card for offline performance and efficiency analysis.
 
 ## System architecture
 
 ```mermaid
 flowchart LR
-    A["Motor RPM sensor"] --> D["External ADC"]
-    B["Output RPM sensor"] --> D
-    C["Current sensor"] --> D
-    D --> E["Propeller Activity Board"]
-    E --> F["Three-gear shift logic"]
-    F --> G["Bidirectional shift motor"]
-    H["Encoder feedback"] --> E
+    A["2x AS5600 speed sensors"] --> E["Propeller Activity Board"]
+    B["ACS712 current sensor"] --> E
+    C["Filtered voltage sensing + ADS1115"] --> E
+    D["Thermistor"] --> E
+    E --> F["Gear-selection logic"]
+    F --> G["L298N + shift actuator"]
+    H["Shift encoder feedback"] --> E
     G --> H
-    E --> I["Live telemetry display"]
-    J["Digital potentiometer"] --> K["Drivetrain operating point"]
-    E --> J
-    K --> A
-    K --> B
+    E --> I["Composite telemetry display"]
+    E --> J["SD-card data logging"]
+    E --> K["X9C104 digital potentiometer"]
+    K --> L["Motor speed controller"]
+    L --> M["24 V drivetrain motor"]
 ```
 
 The firmware uses independent Propeller cogs for ADC acquisition, encoder tracking, and potentiometer control while the main loop handles shift decisions and telemetry.
+
+## Mechanical drivetrain
+
+The drivetrain combines a fixed 45:1 primary reduction with three selectable secondary ratios:
+
+| Selected stage | Total reduction | Intended operating behavior |
+|---|---:|---|
+| 0.6 | 75:1 | Highest mechanical advantage; favors loaded, lower-speed operation |
+| 1.0 | 45:1 | Intermediate ratio |
+| 1.2 | 37.5:1 | Highest output speed; reflects more load inertia to the motor |
+
+The interchangeable 3D-printed gear stages and pulley-based loading system make the platform useful for studying how ratio selection changes current draw, acceleration, output speed, and efficiency.
 
 ## Automatic shifting strategy
 
@@ -59,8 +74,8 @@ analysis/
   efficiencymap.ipynb     Interpolated multidimensional efficiency maps
 media/
   demo.mp4                Hardware demonstration
-  *.png                   Figures recovered from notebook outputs
-requirements.txt          Python analysis dependencies
+  drivetrain-hardware.png Annotated physical drivetrain
+  *.png                   Experimental and modeled result figures
 ```
 
 ## Hardware and software
@@ -68,12 +83,16 @@ requirements.txt          Python analysis dependencies
 ### Embedded platform
 
 - Parallax Propeller Activity Board
-- External SPI ADC
-- Two analog RPM sensing channels
-- Motor-current sensing channel
-- Bidirectional DC shift motor
+- 24 V, 250 W brushed DC drivetrain motor
+- 3D-printed three-speed transmission and pulley load system
+- Two AS5600 magnetic encoders
+- ACS712 current sensor
+- ADS1115 ADCs with filtered voltage sensing
+- Thermistor for motor-temperature telemetry
+- L298N motor driver and bidirectional shift actuator
 - Encoder feedback
-- Digitally controlled potentiometer
+- X9C104 digital potentiometer and DC motor speed controller
+- SD-card data logging
 - TV text telemetry output
 - SimpleIDE / Propeller C
 
@@ -86,34 +105,32 @@ requirements.txt          Python analysis dependencies
 - Matplotlib
 - SciPy
 
-## Analysis outputs
+## Experimental results
 
-The notebooks compare motor voltage, motor speed, output speed, current, and calculated system efficiency across multiple load and gear-ratio runs.
+The report and notebooks compare motor voltage, motor speed, output speed, current, load, transient response, and calculated system efficiency across multiple gear configurations.
+
+### Key findings
+
+- The bare motor drew **21.28 W** at maximum no-load speed; adding the 3D-printed gearbox increased this to **24.37 W**, an approximately **14.5%** increase attributed to drivetrain friction.
+- The 75:1 configuration shifted the motor toward higher-speed, lower-current operating regions under the tested loads.
+- Lower total reduction increased the load inertia reflected to the motor and lengthened the modeled acceleration response.
+- The efficiency-map overlay provided a data-driven basis for comparing operating paths; the archived firmware demonstrates a simpler threshold-and-hysteresis implementation.
+
+![Multidimensional efficiency map with measured operating paths](media/efficiency-map-report.png)
+
+The contour map overlays measured operating paths on motor-speed and current coordinates. It highlights how ratio and load move the drivetrain through different efficiency regions.
+
+![Modeled step response for the bare motor and three drivetrain ratios](media/modeled-step-response.png)
+
+The modeled normalized responses use characteristic times of approximately 0.70 s for the 75:1 configuration, 0.85 s for 45:1, and 1.00 s for 37.5:1, illustrating the effect of reflected inertia as mechanical advantage decreases.
+
+### Additional notebook outputs
 
 ![Motor comparison plots](media/motor-comparison.png)
 
 ![Heavy-load efficiency comparison](media/efficiency-comparison-heavy-load.png)
 
-## Running the firmware
-
-1. Open `firmware/integratedtest2.side` in SimpleIDE.
-2. Confirm the board target is `ACTIVITYBOARD`.
-3. Install or provide the project-specific `adcDCpropab` ADC library and Parallax `simpletools`/`TvText` libraries.
-4. Verify every pin assignment and mechanical shift limit before energizing the drivetrain.
-5. Build and load the firmware to the Propeller board.
-
-> The shift routine is calibration-dependent and does not include end-stop timeout protection. Test with the drivetrain unloaded and be prepared to remove power during initial calibration.
-
-## Running the analysis
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-jupyter lab analysis
-```
-
-The notebooks reference experimental CSV files named `log3.csv` through `log12.csv`. Those raw logs were not present in the archived project folder and are therefore not included here. Existing notebook outputs and extracted figures are retained as project evidence, but regenerating the plots requires restoring CSV files with columns such as `v_mot`, `i_mot`, `m_rpm`, `o_rpm`, `eff`, `gear`, `mass`, and `l_tau`.
+The notebooks reference experimental CSV files named `log3.csv` through `log12.csv`. Those raw logs were not present in the archived project folder, so the repository retains the report figures, notebook outputs, and extracted plots as project evidence rather than presenting the analysis as a reproducible package.
 
 ## Engineering considerations and next steps
 
