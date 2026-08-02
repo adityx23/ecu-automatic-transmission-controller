@@ -60,7 +60,6 @@ analysis/
 media/
   demo.mp4                Hardware demonstration
   *.png                   Figures recovered from notebook outputs
-requirements.txt          Python analysis dependencies
 ```
 
 ## Hardware and software
@@ -94,26 +93,7 @@ The notebooks compare motor voltage, motor speed, output speed, current, and cal
 
 ![Heavy-load efficiency comparison](media/efficiency-comparison-heavy-load.png)
 
-## Running the firmware
-
-1. Open `firmware/integratedtest2.side` in SimpleIDE.
-2. Confirm the board target is `ACTIVITYBOARD`.
-3. Install or provide the project-specific `adcDCpropab` ADC library and Parallax `simpletools`/`TvText` libraries.
-4. Verify every pin assignment and mechanical shift limit before energizing the drivetrain.
-5. Build and load the firmware to the Propeller board.
-
-> The shift routine is calibration-dependent and does not include end-stop timeout protection. Test with the drivetrain unloaded and be prepared to remove power during initial calibration.
-
-## Running the analysis
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-jupyter lab analysis
-```
-
-The notebooks reference experimental CSV files named `log3.csv` through `log12.csv`. Those raw logs were not present in the archived project folder and are therefore not included here. Existing notebook outputs and extracted figures are retained as project evidence, but regenerating the plots requires restoring CSV files with columns such as `v_mot`, `i_mot`, `m_rpm`, `o_rpm`, `eff`, `gear`, `mass`, and `l_tau`.
+The notebooks reference experimental CSV files named `log3.csv` through `log12.csv`. Those raw logs were not present in the archived project folder, so the repository retains the notebook outputs and extracted figures as project evidence rather than presenting the analysis as a reproducible package.
 
 ## Engineering considerations and next steps
 
