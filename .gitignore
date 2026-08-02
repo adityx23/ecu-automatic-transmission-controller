@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+*.py[cod]
+.DS_Store
+Thumbs.db
+
+# Generated figures not intentionally committed under media/
+analysis/*.png
+
+# Restore experimental logs locally when available.
+log*.csv
+analysis/log*.csv
